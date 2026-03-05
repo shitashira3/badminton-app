@@ -1,68 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Badminton Shuttlecock Counter</title>
+    <title>เครื่องนับลูกแบดมินตัน</title>
     <style>
-        /* ตกแต่งปุ่มให้กดง่ายบนมือถือ */
-        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
-        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn-add { width: 60px; height: 60px; border-radius: 50%; border: none; background: #28a745; color: white; font-size: 30px; cursor: pointer; }
-        .btn-submit { width: 100%; padding: 20px; background: #007bff; color: white; border: none; border-radius: 10px; font-size: 20px; position: fixed; bottom: 0; left: 0; }
-        .count { font-size: 24px; font-weight: bold; color: #007bff; margin: 0 15px; }
+        :root { --primary: #28a745; --secondary: #007bff; --bg: #f4f7f6; }
+        body { font-family: 'Kanit', sans-serif; background: var(--bg); margin: 0; padding: 20px; padding-bottom: 100px; }
+        h2 { text-align: center; color: #333; }
+        .card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .member-info { flex-grow: 1; }
+        .name { font-size: 18px; font-weight: bold; color: #444; }
+        .count-label { font-size: 14px; color: #888; }
+        .controls { display: flex; align-items: center; gap: 15px; }
+        .btn-add { width: 55px; height: 55px; border-radius: 50%; border: none; background: var(--primary); color: white; font-size: 28px; cursor: pointer; box-shadow: 0 4px 0 #1e7e34; transition: 0.1s; }
+        .btn-add:active { transform: translateY(3px); box-shadow: none; }
+        .total { font-size: 24px; font-weight: bold; color: var(--secondary); min-width: 30px; text-align: center; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; display: flex; gap: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+        button.action { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; }
+        .btn-reset { background: #dc3545; }
+        .btn-summary { background: var(--secondary); }
     </style>
 </head>
 <body>
-    <div id="list">กำลังโหลดรายชื่อ...</div>
-    <div style="height: 100px;"></div>
-    <button class="btn-submit" onclick="submitData()">🏸 สรุปผลและบันทึก</button>
+
+    <h2>🏸 นับลูกแบดมินตัน</h2>
+    <div id="app"></div>
+
+    <div class="footer">
+        <button class="action btn-reset" onclick="resetAll()">ล้างค่า</button>
+        <button class="action btn-summary" onclick="copySummary()">คัดลอกสรุปผล</button>
+    </div>
 
     <script>
-        const API_URL = "YOUR_WEB_APP_URL"; // <-- https://script.google.com/macros/s/AKfycbwCV361YoM8alitIVbf9V7OqN5pB30WKUef3QkMWpVTWcBBM8RObItP307II4h4Rzgm/exec
-        let data = [];
-
-        // ดึงรายชื่อมาแสดง
-        async function loadNames() {
-            const resp = await fetch(API_URL + "?action=getNames");
-            const names = await resp.json();
-            data = names.map(name => ({ name: name, count: 0 }));
-            render();
-        }
+        // ใส่รายชื่อเพื่อนตรงนี้ (แก้ไขได้เลยครับ)
+        const membersList = ["สมาชิก 1", "สมาชิก 2", "สมาชิก 3", "สมาชิก 4", "สมาชิก 5", "สมาชิก 6", "สมาชิก 7", "สมาชิก 8", "สมาชิก 9", "สมาชิก 10"];
+        
+        let counts = JSON.parse(localStorage.getItem('badmintonCounts')) || {};
 
         function render() {
-            let html = '';
-            data.forEach((item, i) => {
-                if(item.name.trim() !== "") {
-                    html += `<div class="card">
-                        <span style="font-size:18px">${item.name}</span>
-                        <div style="display:flex; align-items:center;">
-                            <span class="count" id="c-${i}">${item.count}</span>
-                            <button class="btn-add" onclick="add(${i})">+</button>
+            const container = document.getElementById('app');
+            container.innerHTML = membersList.map(name => {
+                const currentCount = counts[name] || 0;
+                return `
+                    <div class="card">
+                        <div class="member-info">
+                            <div class="name">${name}</div>
+                            <div class="count-label">จำนวนที่ใช้</div>
                         </div>
-                    </div>`;
-                }
-            });
-            document.getElementById('list').innerHTML = html;
-        }
-
-        function add(i) {
-            data[i].count++;
-            document.getElementById(`c-${i}`).innerText = data[i].count;
-        }
-
-        async function submitData() {
-            if(!confirm("ยืนยันการบันทึกจำนวนลูก?")) return;
-            // ส่งข้อมูลกลับไปที่ Google Sheets
-            await fetch(API_URL, {
-                method: "POST",
-                body: JSON.stringify(data.map(d => d.count))
-            });
-            alert("บันทึกสำเร็จ!");
-            location.reload();
-        }
-
-        loadNames();
-    </script>
-</body>
-</html>
+                        <div class="controls">
+                            <span class
