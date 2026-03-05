@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badminton Shuttlecock Counter</title>
+    <style>
+        /* ตกแต่งปุ่มให้กดง่ายบนมือถือ */
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-add { width: 60px; height: 60px; border-radius: 50%; border: none; background: #28a745; color: white; font-size: 30px; cursor: pointer; }
+        .btn-submit { width: 100%; padding: 20px; background: #007bff; color: white; border: none; border-radius: 10px; font-size: 20px; position: fixed; bottom: 0; left: 0; }
+        .count { font-size: 24px; font-weight: bold; color: #007bff; margin: 0 15px; }
+    </style>
+</head>
+<body>
+    <div id="list">กำลังโหลดรายชื่อ...</div>
+    <div style="height: 100px;"></div>
+    <button class="btn-submit" onclick="submitData()">🏸 สรุปผลและบันทึก</button>
+
+    <script>
+        const API_URL = "YOUR_WEB_APP_URL"; // <-- วางลิงก์ที่ได้จาก Google ตรงนี้
+        let data = [];
+
+        // ดึงรายชื่อมาแสดง
+        async function loadNames() {
+            const resp = await fetch(API_URL + "?action=getNames");
+            const names = await resp.json();
+            data = names.map(name => ({ name: name, count: 0 }));
+            render();
+        }
+
+        function render() {
+            let html = '';
+            data.forEach((item, i) => {
+                if(item.name.trim() !== "") {
+                    html += `<div class="card">
+                        <span style="font-size:18px">${item.name}</span>
+                        <div style="display:flex; align-items:center;">
+                            <span class="count" id="c-${i}">${item.count}</span>
+                            <button class="btn-add" onclick="add(${i})">+</button>
+                        </div>
+                    </div>`;
+                }
+            });
+            document.getElementById('list').innerHTML = html;
+        }
+
+        function add(i) {
+            data[i].count++;
+            document.getElementById(`c-${i}`).innerText = data[i].count;
+        }
+
+        async function submitData() {
+            if(!confirm("ยืนยันการบันทึกจำนวนลูก?")) return;
+            // ส่งข้อมูลกลับไปที่ Google Sheets
+            await fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(data.map(d => d.count))
+            });
+            alert("บันทึกสำเร็จ!");
+            location.reload();
+        }
+
+        loadNames();
+    </script>
+</body>
+</html>
