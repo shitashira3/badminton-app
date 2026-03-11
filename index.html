@@ -33,7 +33,7 @@
     <h2>🏸 ระบบบันทึกลูกแบด</h2>
 
     <div class="date-section">
-        <label>วันที่:</label>
+        <label>วันที่เล่น:</label>
         <input type="date" id="play-date">
     </div>
 
@@ -90,7 +90,7 @@
         }
 
         function resetData() {
-            if(confirm("ต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?")) {
+            if(confirm("ต้องการล้างข้อมูลทั้งหมด (รวมรายชื่อ) ใช่หรือไม่?")) {
                 members = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('play-date').value = today;
@@ -100,8 +100,8 @@
         }
 
         function showSummary() {
-            // 🚩 แก้ไข: ใส่ Web App URL ของคุณที่นี่
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbzCH823rXh_mRw760WdSMR6F8rkyw0LkUD3PFYEEnfW6P_dlU2L05MPgFAv0xQOnBHnow/exec'; 
+            // 🚩 ใส่ Web App URL ที่ก๊อปมาจาก Google Sheets ตรงนี้
+            const scriptURL = 'ใส่_WEB_APP_URL_ของคุณที่นี่'; 
             
             const date = document.getElementById('play-date').value;
             const btn = document.getElementById('sum-btn');
@@ -112,8 +112,23 @@
                 return;
             }
 
-            const totalShuttles = filteredData.reduce((sum, m) => sum + m.count, 0);
-            const confirmSave = confirm(`สรุปยอดวันที่: ${date}\nรวมทั้งสิ้น: ${totalShuttles} ลูก\nต้องการบันทึกใช่หรือไม่?`);
+            // คำนวณผลรวมและรายละเอียดรายชื่อ
+            let detailText = "";
+            let totalShuttles = 0;
+            filteredData.forEach(m => {
+                const name = m.name || `ลำดับที่ ${m.id}`;
+                detailText += `- ${name}: ${m.count} ลูก\n`;
+                totalShuttles += m.count;
+            });
+
+            const confirmSave = confirm(
+                `🏸 สรุปยอดวันที่: ${date}\n` +
+                `----------------------------\n` +
+                detailText +
+                `----------------------------\n` +
+                `รวมทั้งสิ้น: ${totalShuttles} ลูก\n\n` +
+                `ยืนยันการบันทึกใช่หรือไม่?`
+            );
             
             if (!confirmSave) return;
 
@@ -126,7 +141,7 @@
                 body: JSON.stringify({ date: date, members: filteredData })
             })
             .then(() => {
-                alert(`บันทึกเรียบร้อย!\nยอดรวมวันนี้: ${totalShuttles} ลูก`);
+                alert(`บันทึกเรียบร้อย!\nรวมทั้งหมด: ${totalShuttles} ลูก`);
                 btn.disabled = false;
                 btn.innerText = "สรุปยอดทั้งหมด";
                 resetData(); // ล้างค่าหลังบันทึกเสร็จ
