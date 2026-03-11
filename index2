@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เครื่องนับลูกแบดมินตัน 1-20</title>
+    <style>
+        :root { --primary: #28a745; --secondary: #007bff; --bg: #f0f2f5; }
+        body { font-family: 'Kanit', sans-serif; background: var(--bg); margin: 0; padding: 10px; padding-bottom: 120px; }
+        h2 { text-align: center; color: #333; margin-bottom: 10px; }
+        
+        /* เพิ่มสไตล์ช่องวันที่ */
+        .date-container { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        input[type="date"] { border: 1px solid #ddd; border-radius: 8px; padding: 8px; font-family: 'Kanit'; font-size: 16px; }
+
+        .header-row { display: flex; padding: 10px; font-weight: bold; background: #e9ecef; border-radius: 8px; margin-bottom: 10px; text-align: center; }
+        .card { background: white; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .col-id { width: 15%; text-align: center; color: #888; font-weight: bold; }
+        .col-name { width: 45%; padding-left: 10px; }
+        .col-action { width: 40%; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+        input[type="text"] { width: 90%; border: 1px solid #ddd; border-radius: 5px; padding: 5px; font-size: 14px; }
+        .btn-add { width: 50px; height: 50px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 24px; cursor: pointer; transition: 0.1s; }
+        .btn-add:active { transform: scale(0.9); background: #218838; }
+        .count-num { font-size: 20px; font-weight: bold; color: var(--secondary); min-width: 30px; text-align: center; }
+
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; display: flex; gap: 10px; box-shadow: 0 -3px 10px rgba(0,0,0,0.1); z-index: 1000; }
+        .btn-footer { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; color: white; cursor: pointer; }
+        .btn-reset { background: #dc3545; }
+        .btn-summary { background: var(--secondary); }
+    </style>
+</head>
+<body>
+
+    <h2>🏸 ระบบบันทึกลูกแบด</h2>
+
+    <div class="date-container">
+        <label>วันที่:</label>
+        <input type="date" id="selected-date">
+    </div>
+
+    <div class="header-row">
+        <div class="col-id">ลำดับ</div>
+        <div class="col-name">รายชื่อสมาชิก</div>
+        <div class="col-action">ติ๊กนับลูก</div>
+    </div>
+
+    <div id="member-list"></div>
+
+    <div class="footer">
+        <button class="btn-footer btn-reset" onclick="resetData()">ล้างค่า</button>
+        <button class="btn-footer btn-summary" id="sum-btn" onclick="showSummary()">สรุปยอดทั้งหมด</button>
+    </div>
+
+    <script>
+        // ตั้งค่าวันที่ปัจจุบันโดยอัตโนมัติ
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('selected-date').value = today;
+        };
+
+        let members = JSON.parse(localStorage.getItem('badmintonData')) || 
+                      Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
+
+        function render() {
+            const listHtml = members.map((m, index) => `
+                <div class="card">
+                    <div class="col-id">${m.id}</div>
+                    <div class="col-name">
+                        <input type="text" placeholder="ระบุชื่อ..." value="${m.name}" 
+                               onchange="updateName(${index}, this.value)">
+                    </div>
+                    <div class="col-action">
+                        <span class="count-num" id="cnt-${index}">${m.count}</span>
+                        <button class="btn-add" onclick="addCount(${index})">+</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('member-list').innerHTML = listHtml;
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+        }
+
+        function updateName(index, val) {
+            members[index].name = val;
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+        }
+
+        function addCount(index) {
+            members[index].count++;
+            document.getElementById(`cnt-${index}`).innerText = members[index].count;
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+        }
+
+        // ส่วนที่ 1: แก้ไขปุ่มล้างค่าให้ Reset ทุกอย่าง
+        function resetData() {
+            if(confirm("ต้องการล้างค่าทุกอย่าง (รวมชื่อและวันที่) ใช่หรือไม่?")) {
+                members = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('selected-date').value = today;
+                render();
+            }
+        }
+
+        // ส่วนที่ 3: ส่งข้อมูลไปยัง Google Sheets
+        function showSummary() {
+            const dateValue = document.getElementById('selected-date').value;
+            const btn = document.getElementById('sum-btn');
+            
+            // กรองเฉพาะคนที่มีการใช้ลูกจริง
+            const filteredData = members.filter(m => m.count > 0);
+            
+            if(filteredData.length === 0) {
+                alert("ยังไม่มีการนับลูก");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "กำลังบันทึก...";
+
+            // เรียกฟังก์ชันใน Google Apps Script
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    alert("บันทึกลงไฟล์ 'ฐานข้อมูล 1' เรียบร้อยแล้ว!");
+                    btn.disabled = false;
+                    btn.innerText = "สรุปยอดทั้งหมด";
+                })
+                .withFailureHandler(function(err) {
+                    alert("เกิดข้อผิดพลาด: " + err);
+                    btn.disabled = false;
+                    btn.innerText = "สรุปยอดทั้งหมด";
+                })
+                .saveToSheet(dateValue, filteredData);
+        }
+
+        render();
+    </script>
+</body>
+</html>
