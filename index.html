@@ -1,38 +1,133 @@
-function showSummary() {
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เครื่องนับลูกแบดมินตัน 1-20</title>
+    <style>
+        :root { --primary: #28a745; --secondary: #007bff; --bg: #f0f2f5; }
+        body { font-family: 'Kanit', sans-serif; background: var(--bg); margin: 0; padding: 10px; padding-bottom: 120px; }
+        h2 { text-align: center; color: #333; margin-bottom: 10px; }
+        
+        .date-section { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        input[type="date"] { border: 1px solid #ddd; border-radius: 8px; padding: 8px; font-family: 'Kanit'; font-size: 16px; }
+
+        .header-row { display: flex; padding: 10px; font-weight: bold; background: #e9ecef; border-radius: 8px; margin-bottom: 10px; text-align: center; }
+        .card { background: white; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .col-id { width: 15%; text-align: center; color: #888; font-weight: bold; }
+        .col-name { width: 45%; padding-left: 10px; }
+        .col-action { width: 40%; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+        input[type="text"] { width: 90%; border: 1px solid #ddd; border-radius: 5px; padding: 5px; font-size: 14px; }
+        .btn-add { width: 50px; height: 50px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 24px; cursor: pointer; transition: 0.1s; }
+        .btn-add:active { transform: scale(0.9); background: #218838; }
+        .count-num { font-size: 20px; font-weight: bold; color: var(--secondary); min-width: 30px; text-align: center; }
+
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; display: flex; gap: 10px; box-shadow: 0 -3px 10px rgba(0,0,0,0.1); z-index: 1000; }
+        .btn-footer { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; color: white; cursor: pointer; }
+        .btn-reset { background: #dc3545; }
+        .btn-summary { background: var(--secondary); }
+    </style>
+</head>
+<body>
+
+    <h2>🏸 ระบบบันทึกลูกแบด</h2>
+
+    <div class="date-section">
+        <label>วันที่เล่น:</label>
+        <input type="date" id="play-date">
+    </div>
+
+    <div class="header-row">
+        <div class="col-id">ลำดับ</div>
+        <div class="col-name">รายชื่อสมาชิก</div>
+        <div class="col-action">ติ๊กนับลูก</div>
+    </div>
+
+    <div id="member-list"></div>
+
+    <div class="footer">
+        <button class="btn-footer btn-reset" onclick="resetData()">ล้างค่า</button>
+        <button class="btn-footer btn-summary" id="sum-btn" onclick="showSummary()">สรุปยอดทั้งหมด</button>
+    </div>
+
+    <script>
+        // ตั้งค่าวันที่ปัจจุบัน
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('play-date').value = today;
+        };
+
+        let members = JSON.parse(localStorage.getItem('badmintonData')) || 
+                      Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
+
+        function render() {
+            const listHtml = members.map((m, index) => `
+                <div class="card">
+                    <div class="col-id">${m.id}</div>
+                    <div class="col-name">
+                        <input type="text" placeholder="ระบุชื่อ..." value="${m.name}" 
+                               onchange="updateName(${index}, this.value)">
+                    </div>
+                    <div class="col-action">
+                        <span class="count-num" id="cnt-${index}">${m.count}</span>
+                        <button class="btn-add" onclick="addCount(${index})">+</button>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('member-list').innerHTML = listHtml;
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+        }
+
+        function updateName(index, val) {
+            members[index].name = val;
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+        }
+
+        function addCount(index) {
+            members[index].count++;
+            document.getElementById(`cnt-${index}`).innerText = members[index].count;
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+        }
+
+        function resetData() {
+            if(confirm("ต้องการล้างข้อมูลทั้งหมด (รวมรายชื่อ) ใช่หรือไม่?")) {
+                members = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('play-date').value = today;
+                render();
+                localStorage.removeItem('badmintonData');
+            }
+        }
+
+        function showSummary() {
             // 🚩 ใส่ Web App URL ที่ก๊อปมาจาก Google Sheets ตรงนี้
             const scriptURL = 'https://script.google.com/macros/library/d/1hfX_IMhCuM7rdyAwPuAvShpz5wKiaC0a2I_X3L5UDw8MBBNtdXeSVBrl/1'; 
             
             const date = document.getElementById('play-date').value;
             const btn = document.getElementById('sum-btn');
-            
-            // กรองเอาเฉพาะคนที่มีจำนวนลูกมากกว่า 0
             const filteredData = members.filter(m => m.count > 0);
 
             if (filteredData.length === 0) {
-                alert("ยังไม่มีข้อมูลการนับลูกในขณะนี้");
+                alert("ยังไม่มีการนับลูก");
                 return;
             }
 
-            // --- ส่วนที่แก้ไข: สร้างรายชื่อสมาชิกและจำนวนลูกรายคน ---
+            // คำนวณผลรวมและรายละเอียดรายชื่อ
             let detailText = "";
             let totalShuttles = 0;
-
-            for (let i = 0; i < filteredData.length; i++) {
-                let m = filteredData[i];
-                let memberName = m.name.trim() !== "" ? m.name : "ลำดับที่ " + m.id;
-                detailText += (i + 1) + ". " + memberName + " ใช้ไป " + m.count + " ลูก\n";
+            filteredData.forEach(m => {
+                const name = m.name || `ลำดับที่ ${m.id}`;
+                detailText += `- ${name}: ${m.count} ลูก\n`;
                 totalShuttles += m.count;
-            }
-            // --------------------------------------------------
+            });
 
-            // แสดงหน้าต่างยืนยันพร้อมรายละเอียดรายคน
             const confirmSave = confirm(
-                "🏸 สรุปยอดการใช้ลูกวันที่: " + date + "\n" +
-                "----------------------------------\n" +
+                `🏸 สรุปยอดวันที่: ${date}\n` +
+                `----------------------------\n` +
                 detailText +
-                "----------------------------------\n" +
-                "รวมทั้งสิ้น: " + totalShuttles + " ลูก\n\n" +
-                "ยืนยันบันทึกข้อมูลลง Google Sheets หรือไม่?"
+                `----------------------------\n` +
+                `รวมทั้งสิ้น: ${totalShuttles} ลูก\n\n` +
+                `ยืนยันการบันทึกใช่หรือไม่?`
             );
             
             if (!confirmSave) return;
@@ -43,15 +138,13 @@ function showSummary() {
             fetch(scriptURL, {
                 method: 'POST',
                 mode: 'no-cors', 
-                cache: 'no-cache',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ date: date, members: filteredData })
             })
             .then(() => {
-                alert("บันทึกข้อมูลเรียบร้อยแล้ว!\nยอดรวมทั้งหมด: " + totalShuttles + " ลูก");
+                alert(`บันทึกเรียบร้อย!\nรวมทั้งหมด: ${totalShuttles} ลูก`);
                 btn.disabled = false;
                 btn.innerText = "สรุปยอดทั้งหมด";
-                resetData(); // ล้างค่าหน้าจอทั้งหมดตามที่ต้องการ
+                resetData(); // ล้างค่าหลังบันทึกเสร็จ
             })
             .catch(error => {
                 alert("เกิดข้อผิดพลาด: " + error.message);
@@ -59,3 +152,8 @@ function showSummary() {
                 btn.innerText = "สรุปยอดทั้งหมด";
             });
         }
+
+        render();
+    </script>
+</body>
+</html>
