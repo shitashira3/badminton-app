@@ -9,7 +9,6 @@
         body { font-family: 'Kanit', sans-serif; background: var(--bg); margin: 0; padding: 10px; padding-bottom: 120px; }
         h2 { text-align: center; color: #333; margin-bottom: 10px; }
         
-        /* เพิ่มสไตล์ช่องวันที่ */
         .date-section { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         input[type="date"] { border: 1px solid #ddd; border-radius: 8px; padding: 8px; font-family: 'Kanit'; font-size: 16px; }
 
@@ -52,7 +51,7 @@
     </div>
 
     <script>
-        // ตั้งค่าวันที่ปัจจุบันโดยอัตโนมัติ
+        // ตั้งค่าวันที่ปัจจุบัน
         window.onload = function() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('play-date').value = today;
@@ -75,7 +74,6 @@
                     </div>
                 </div>
             `).join('');
-            
             document.getElementById('member-list').innerHTML = listHtml;
             localStorage.setItem('badmintonData', JSON.stringify(members));
         }
@@ -91,7 +89,6 @@
             localStorage.setItem('badmintonData', JSON.stringify(members));
         }
 
-        // ฟังก์ชันล้างค่า (Reset ทุกอย่าง)
         function resetData() {
             if(confirm("ต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?")) {
                 members = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
@@ -102,14 +99,12 @@
             }
         }
 
-        // ฟังก์ชันส่งข้อมูลไปที่ Google Sheets (ผ่าน Web App URL)
         function showSummary() {
-            // สำคัญ: เอา URL ที่ได้จากหน้า Apps Script มาใส่ตรงนี้
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbzG4gyTop_4Nydj1hO_Dbk-h0cV4fFbsz9jCJHcv3i6JuxdzbkAiYR9PTZVQ_1LyBQWUw/exec'; 
+            // 🚩 แก้ไข: ใส่ Web App URL ของคุณที่นี่
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbzCH823rXh_mRw760WdSMR6F8rkyw0LkUD3PFYEEnfW6P_dlU2L05MPgFAv0xQOnBHnow/exec'; 
             
             const date = document.getElementById('play-date').value;
             const btn = document.getElementById('sum-btn');
-            
             const filteredData = members.filter(m => m.count > 0);
 
             if (filteredData.length === 0) {
@@ -117,22 +112,21 @@
                 return;
             }
 
+            const totalShuttles = filteredData.reduce((sum, m) => sum + m.count, 0);
+            const confirmSave = confirm(`สรุปยอดวันที่: ${date}\nรวมทั้งสิ้น: ${totalShuttles} ลูก\nต้องการบันทึกใช่หรือไม่?`);
+            
+            if (!confirmSave) return;
+
             btn.disabled = true;
             btn.innerText = "กำลังบันทึก...";
 
-            // ส่งข้อมูลด้วยเทคนิค fetch (CORS)
             fetch(scriptURL, {
                 method: 'POST',
-                mode: 'no-cors', // สำคัญมากสำหรับการส่งจาก GitHub Pages ไปยัง Apps Script
-                cache: 'no-cache',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    date: date,
-                    members: filteredData
-                })
+                mode: 'no-cors', 
+                body: JSON.stringify({ date: date, members: filteredData })
             })
             .then(() => {
-                alert("บันทึกลง Google Sheets เรียบร้อยแล้ว!\n(หมายเหตุ: ระบบ no-cors จะบันทึกสำเร็จแต่จะมองไม่เห็นข้อความตอบกลับจากเซิร์ฟเวอร์)");
+                alert(`บันทึกเรียบร้อย!\nยอดรวมวันนี้: ${totalShuttles} ลูก`);
                 btn.disabled = false;
                 btn.innerText = "สรุปยอดทั้งหมด";
                 resetData(); // ล้างค่าหลังบันทึกเสร็จ
