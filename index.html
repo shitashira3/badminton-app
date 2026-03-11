@@ -10,7 +10,7 @@
         h2 { text-align: center; color: #333; margin-bottom: 10px; }
         
         /* เพิ่มสไตล์ช่องวันที่ */
-        .date-container { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .date-section { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         input[type="date"] { border: 1px solid #ddd; border-radius: 8px; padding: 8px; font-family: 'Kanit'; font-size: 16px; }
 
         .header-row { display: flex; padding: 10px; font-weight: bold; background: #e9ecef; border-radius: 8px; margin-bottom: 10px; text-align: center; }
@@ -33,9 +33,9 @@
 
     <h2>🏸 ระบบบันทึกลูกแบด</h2>
 
-    <div class="date-container">
+    <div class="date-section">
         <label>วันที่:</label>
-        <input type="date" id="selected-date">
+        <input type="date" id="play-date">
     </div>
 
     <div class="header-row">
@@ -55,7 +55,7 @@
         // ตั้งค่าวันที่ปัจจุบันโดยอัตโนมัติ
         window.onload = function() {
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('selected-date').value = today;
+            document.getElementById('play-date').value = today;
         };
 
         let members = JSON.parse(localStorage.getItem('badmintonData')) || 
@@ -91,25 +91,28 @@
             localStorage.setItem('badmintonData', JSON.stringify(members));
         }
 
-        // ส่วนที่ 1: แก้ไขปุ่มล้างค่าให้ Reset ทุกอย่าง
+        // ฟังก์ชันล้างค่า (Reset ทุกอย่าง)
         function resetData() {
-            if(confirm("ต้องการล้างค่าทุกอย่าง (รวมชื่อและวันที่) ใช่หรือไม่?")) {
+            if(confirm("ต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?")) {
                 members = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
                 const today = new Date().toISOString().split('T')[0];
-                document.getElementById('selected-date').value = today;
+                document.getElementById('play-date').value = today;
                 render();
+                localStorage.removeItem('badmintonData');
             }
         }
 
-        // ส่วนที่ 3: ส่งข้อมูลไปยัง Google Sheets
+        // ฟังก์ชันส่งข้อมูลไปที่ Google Sheets (ผ่าน Web App URL)
         function showSummary() {
-            const dateValue = document.getElementById('selected-date').value;
+            // สำคัญ: เอา URL ที่ได้จากหน้า Apps Script มาใส่ตรงนี้
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbzG4gyTop_4Nydj1hO_Dbk-h0cV4fFbsz9jCJHcv3i6JuxdzbkAiYR9PTZVQ_1LyBQWUw/exec'; 
+            
+            const date = document.getElementById('play-date').value;
             const btn = document.getElementById('sum-btn');
             
-            // กรองเฉพาะคนที่มีการใช้ลูกจริง
             const filteredData = members.filter(m => m.count > 0);
-            
-            if(filteredData.length === 0) {
+
+            if (filteredData.length === 0) {
                 alert("ยังไม่มีการนับลูก");
                 return;
             }
@@ -117,19 +120,28 @@
             btn.disabled = true;
             btn.innerText = "กำลังบันทึก...";
 
-            // เรียกฟังก์ชันใน Google Apps Script
-            google.script.run
-                .withSuccessHandler(function(res) {
-                    alert("บันทึกลงไฟล์ 'ฐานข้อมูล 1' เรียบร้อยแล้ว!");
-                    btn.disabled = false;
-                    btn.innerText = "สรุปยอดทั้งหมด";
+            // ส่งข้อมูลด้วยเทคนิค fetch (CORS)
+            fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors', // สำคัญมากสำหรับการส่งจาก GitHub Pages ไปยัง Apps Script
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: date,
+                    members: filteredData
                 })
-                .withFailureHandler(function(err) {
-                    alert("เกิดข้อผิดพลาด: " + err);
-                    btn.disabled = false;
-                    btn.innerText = "สรุปยอดทั้งหมด";
-                })
-                .saveToSheet(dateValue, filteredData);
+            })
+            .then(() => {
+                alert("บันทึกลง Google Sheets เรียบร้อยแล้ว!\n(หมายเหตุ: ระบบ no-cors จะบันทึกสำเร็จแต่จะมองไม่เห็นข้อความตอบกลับจากเซิร์ฟเวอร์)");
+                btn.disabled = false;
+                btn.innerText = "สรุปยอดทั้งหมด";
+                resetData(); // ล้างค่าหลังบันทึกเสร็จ
+            })
+            .catch(error => {
+                alert("เกิดข้อผิดพลาด: " + error.message);
+                btn.disabled = false;
+                btn.innerText = "สรุปยอดทั้งหมด";
+            });
         }
 
         render();
