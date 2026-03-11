@@ -1,76 +1,235 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
+
+<html lang="th">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>เครื่องนับลูกแบดมินตัน 1-20</title>
+
     <style>
-      body { font-family: sans-serif; padding: 20px; }
-      .form-group { margin-bottom: 15px; }
-      label { display: block; margin-bottom: 5px; }
-      input { padding: 8px; width: 200px; }
-      button { padding: 10px 15px; cursor: pointer; margin-right: 5px; }
-      .btn-save { background-color: #28a745; color: white; border: none; }
-      .btn-reset { background-color: #dc3545; color: white; border: none; }
+
+        :root { --primary: #28a745; --secondary: #007bff; --bg: #f0f2f5; }
+
+        body { font-family: 'Kanit', sans-serif; background: var(--bg); margin: 0; padding: 10px; padding-bottom: 100px; }
+
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+
+        
+
+        /* หัวตาราง */
+
+        .header-row { display: flex; padding: 10px; font-weight: bold; background: #e9ecef; border-radius: 8px; margin-bottom: 10px; text-align: center; }
+
+        
+
+        /* แถวข้อมูล */
+
+        .card { background: white; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        
+
+        .col-id { width: 15%; text-align: center; color: #888; font-weight: bold; }
+
+        .col-name { width: 45%; padding-left: 10px; }
+
+        .col-action { width: 40%; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+
+
+
+        input[type="text"] { width: 90%; border: 1px solid #ddd; border-radius: 5px; padding: 5px; font-size: 14px; }
+
+        
+
+        .btn-add { width: 50px; height: 50px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 24px; cursor: pointer; transition: 0.1s; }
+
+        .btn-add:active { transform: scale(0.9); background: #218838; }
+
+        
+
+        .count-num { font-size: 20px; font-weight: bold; color: var(--secondary); min-width: 30px; text-align: center; }
+
+
+
+        /* ปุ่มคำนวณด้านล่าง */
+
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; display: flex; gap: 10px; box-shadow: 0 -3px 10px rgba(0,0,0,0.1); }
+
+        .btn-footer { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; color: white; cursor: pointer; }
+
+        .btn-reset { background: #dc3545; }
+
+        .btn-summary { background: var(--secondary); }
+
     </style>
-  </head>
-  <body>
 
-    <form id="myForm">
-      <div class="form-group">
-        <label>วันที่:</label>
-        <input type="date" id="dateInput" name="date" required>
-      </div>
+</head>
 
-      <div class="form-group">
-        <label>ยอดรวม/รายละเอียด:</label>
-        <input type="number" id="amountInput" name="amount" placeholder="กรอกตัวเลข" required>
-      </div>
+<body>
 
-      <button type="button" class="btn-save" onclick="submitData()">สรุปยอดทั้งหมด</button>
-      <button type="button" class="btn-reset" onclick="resetForm()">ล้างค่า</button>
-    </form>
 
-    <div id="status" style="margin-top: 20px;"></div>
+
+    <h2>🏸 ระบบบันทึกลูกแบด</h2>
+
+
+
+    <div class="header-row">
+
+        <div class="col-id">ลำดับ</div>
+
+        <div class="col-name">รายชื่อสมาชิก</div>
+
+        <div class="col-action">ติ๊กนับลูก</div>
+
+    </div>
+
+
+
+    <div id="member-list"></div>
+
+
+
+    <div class="footer">
+
+        <button class="btn-footer btn-reset" onclick="resetData()">ล้างค่า</button>
+
+        <button class="btn-footer btn-summary" onclick="showSummary()">สรุปยอดทั้งหมด</button>
+
+    </div>
+
+
 
     <script>
-      // 1. ตั้งค่าวันที่ปัจจุบันให้โดยอัตโนมัติ
-      window.onload = function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('dateInput').value = today;
-      };
 
-      // 2. ฟังก์ชันล้างค่า (Reset)
-      function resetForm() {
-        document.getElementById("myForm").reset();
-        // เซ็ตวันที่กลับเป็นปัจจุบันหลัง reset
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('dateInput').value = today;
-        document.getElementById("status").innerHTML = "ล้างข้อมูลแล้ว";
-      }
+        // สร้างข้อมูล 20 แถว
 
-      // 3. ฟังก์ชันส่งข้อมูลไป Google Sheets
-      function submitData() {
-        const form = document.getElementById("myForm");
-        const status = document.getElementById("status");
-        
-        if(!form.checkValidity()) {
-          status.innerHTML = "กรุณากรอกข้อมูลให้ครบถ้วน";
-          return;
+        let members = JSON.parse(localStorage.getItem('badmintonData')) || 
+
+                      Array.from({length: 20}, (_, i) => ({ id: i + 1, name: '', count: 0 }));
+
+
+
+        function render() {
+
+            const listHtml = members.map((m, index) => `
+
+                <div class="card">
+
+                    <div class="col-id">${m.id}</div>
+
+                    <div class="col-name">
+
+                        <input type="text" placeholder="ระบุชื่อ..." value="${m.name}" 
+
+                               onchange="updateName(${index}, this.value)">
+
+                    </div>
+
+                    <div class="col-action">
+
+                        <span class="count-num" id="cnt-${index}">${m.count}</span>
+
+                        <button class="btn-add" onclick="addCount(${index})">+</button>
+
+                    </div>
+
+                </div>
+
+            `).join('');
+
+            
+
+            document.getElementById('member-list').innerHTML = listHtml;
+
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+
         }
 
-        const formData = {
-          date: document.getElementById("dateInput").value,
-          amount: document.getElementById("amountInput").value
-        };
 
-        status.innerHTML = "กำลังบันทึก...";
 
-        google.script.run
-          .withSuccessHandler(function(msg) {
-            status.innerHTML = msg;
-            resetForm(); // ล้างค่าหลังจากบันทึกสำเร็จ
-          })
-          .processForm(formData);
-      }
+        function updateName(index, val) {
+
+            members[index].name = val;
+
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+
+        }
+
+
+
+        function addCount(index) {
+
+            members[index].count++;
+
+            document.getElementById(`cnt-${index}`).innerText = members[index].count;
+
+            localStorage.setItem('badmintonData', JSON.stringify(members));
+
+        }
+
+
+
+        function resetData() {
+
+            if(confirm("ต้องการล้างข้อมูลนับลูกทั้งหมดใช่หรือไม่? (ชื่อยังคงอยู่)")) {
+
+                members.forEach(m => m.count = 0);
+
+                render();
+
+            }
+
+        }
+
+
+
+        function showSummary() {
+
+            let totalShuttles = 0;
+
+            let summaryText = "🏸 สรุปการใช้ลูกแบดมินตัน\n--------------------\n";
+
+            
+
+            members.forEach(m => {
+
+                if(m.count > 0) {
+
+                    let displayName = m.name || `ลำดับที่ ${m.id}`;
+
+                    summaryText += `${displayName}: ${m.count} ลูก\n`;
+
+                    totalShuttles += m.count;
+
+                }
+
+            });
+
+
+
+            summaryText += `--------------------\nรวมทั้งสิ้น: ${totalShuttles} ลูก`;
+
+            
+
+            // คัดลอกลงคลิปบอร์ด
+
+            navigator.clipboard.writeText(summaryText).then(() => {
+
+                alert(summaryText + "\n\n(คัดลอกสรุปผลลงมือถือเรียบร้อยแล้ว!)");
+
+            });
+
+        }
+
+
+
+        render();
+
     </script>
-  </body>
+
+</body>
+
 </html>
