@@ -101,16 +101,65 @@
 
         function showSummary() {
             // 🚩 ใส่ Web App URL ที่ก๊อปมาจาก Google Sheets ตรงนี้
-            const scriptURL = 'ใส่_WEB_APP_URL_ของคุณที่นี่'; 
+            const scriptURL = 'https://script.google.com/macros/library/d/1hfX_IMhCuM7rdyAwPuAvShpz5wKiaC0a2I_X3L5UDw8MBBNtdXeSVBrl/2'; 
             
             const date = document.getElementById('play-date').value;
             const btn = document.getElementById('sum-btn');
+            
+            // กรองเอาเฉพาะคนที่มีจำนวนลูกมากกว่า 0
             const filteredData = members.filter(m => m.count > 0);
 
             if (filteredData.length === 0) {
-                alert("ยังไม่มีการนับลูก");
+                alert("ยังไม่มีข้อมูลการนับลูกในขณะนี้");
                 return;
             }
+
+            // --- ส่วนที่แก้ไข: สร้างรายชื่อสมาชิกและจำนวนลูกรายคน ---
+            let detailText = "";
+            let totalShuttles = 0;
+
+            for (let i = 0; i < filteredData.length; i++) {
+                let m = filteredData[i];
+                let memberName = m.name.trim() !== "" ? m.name : "ลำดับที่ " + m.id;
+                detailText += (i + 1) + ". " + memberName + " ใช้ไป " + m.count + " ลูก\n";
+                totalShuttles += m.count;
+            }
+            // --------------------------------------------------
+
+            // แสดงหน้าต่างยืนยันพร้อมรายละเอียดรายคน
+            const confirmSave = confirm(
+                "🏸 สรุปยอดการใช้ลูกวันที่: " + date + "\n" +
+                "----------------------------------\n" +
+                detailText +
+                "----------------------------------\n" +
+                "รวมทั้งสิ้น: " + totalShuttles + " ลูก\n\n" +
+                "ยืนยันบันทึกข้อมูลลง Google Sheets หรือไม่?"
+            );
+            
+            if (!confirmSave) return;
+
+            btn.disabled = true;
+            btn.innerText = "กำลังบันทึก...";
+
+            fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: date, members: filteredData })
+            })
+            .then(() => {
+                alert("บันทึกข้อมูลเรียบร้อยแล้ว!\nยอดรวมทั้งหมด: " + totalShuttles + " ลูก");
+                btn.disabled = false;
+                btn.innerText = "สรุปยอดทั้งหมด";
+                resetData(); // ล้างค่าหน้าจอทั้งหมดตามที่ต้องการ
+            })
+            .catch(error => {
+                alert("เกิดข้อผิดพลาด: " + error.message);
+                btn.disabled = false;
+                btn.innerText = "สรุปยอดทั้งหมด";
+            });
+        }
 
             // คำนวณผลรวมและรายละเอียดรายชื่อ
             let detailText = "";
